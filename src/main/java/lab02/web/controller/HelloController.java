@@ -1,8 +1,8 @@
 package lab02.web.controller;
 
-import lab02.web.server.RestController;
-import lab02.web.server.GetMapping;
-import lab02.web.server.QueryParam;
+import lab02.web.server.annotations.RestController;
+import lab02.web.server.annotations.GetMapping;
+import lab02.web.server.annotations.QueryParam;
 
 @RestController
 public class HelloController {

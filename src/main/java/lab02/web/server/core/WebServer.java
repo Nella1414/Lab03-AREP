@@ -1,7 +1,5 @@
 package lab02.web.server.core;
 
-import lab02.web.server.GetMapping;
-import lab02.web.server.RestController;
 import lab02.web.server.http.HttpMethod;
 import lab02.web.server.http.Request;
 import lab02.web.server.http.Response;
