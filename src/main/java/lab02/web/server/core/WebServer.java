@@ -8,7 +8,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.lang.reflect.Method;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.file.Files;
@@ -21,8 +20,6 @@ public class WebServer {
     private int listeningPort;
     private String assetsRoot;
     private final Map<String, Map<HttpMethod, Handler>> registry;
-
-    public static Map<String, Method> services = new HashMap<>();
 
     public WebServer() {
         this(8000, "src/main/resources/static");
@@ -42,6 +39,10 @@ public class WebServer {
     public WebServer staticPath(String staticPath) {
         this.assetsRoot = staticPath;
         return this;
+    }
+
+    public void register(HttpMethod method, String path, Handler handler) {
+        map(path, method, handler);
     }
 
     private void map(String path, HttpMethod method, Handler handler) {
@@ -106,15 +107,17 @@ public class WebServer {
     }
 
     public Response handleRequest(Request request) {
-        Map<HttpMethod, Handler> byMethod = registry.get(request.getPath());
+        String path = request.getPath();
+        int q = path == null ? -1 : path.indexOf('?');
+        String cleanPath = path == null ? "/" : (q >= 0 ? path.substring(0, q) : path);
+        Map<HttpMethod, Handler> byMethod = registry.get(cleanPath);
         Handler handler = byMethod != null ? byMethod.get(request.getMethod()) : null;
         Response response = new Response();
-        String path = request.getPath();
         if (path == null || path.isEmpty())
             path = "/";
-        if (path.endsWith("/"))
-            path = path + "index.html";
-        String candidate = this.assetsRoot + path;
+        if (cleanPath.endsWith("/"))
+            cleanPath = cleanPath + "index.html";
+        String candidate = this.assetsRoot + cleanPath;
 
         if (handler != null) {
             handler.handle(request, response);
