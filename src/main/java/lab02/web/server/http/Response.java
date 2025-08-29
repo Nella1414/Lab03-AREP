@@ -1,4 +1,4 @@
-package lab02.web.server;
+package lab02.web.server.http;
 
 import java.util.HashMap;
 

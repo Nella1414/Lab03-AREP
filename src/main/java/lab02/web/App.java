@@ -1,6 +1,6 @@
 package lab02.web;
 
-import lab02.web.server.WebServer;
+import lab02.web.server.core.WebServer;
 
 /**
  * Demo app spinning up the lightweight HTTP server.

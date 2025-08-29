@@ -1,4 +1,4 @@
-package lab02.web.server;
+package lab02.web.server.http;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -72,7 +72,6 @@ public class Request {
             path = restOfLine.substring(0, spaceInRest);
             version = restOfLine.substring(spaceInRest + 1);
         } else {
-            // Fallback if malformed
             String[] pieces = restOfLine.split(" ", 2);
             path = pieces.length > 0 ? pieces[0] : "/";
             version = pieces.length > 1 ? pieces[1] : "HTTP/1.1";
@@ -100,7 +99,6 @@ public class Request {
                 map.put(key, val);
             }
         } catch (Exception ignored) {
-            // ignore malformed URI
         }
         return map;
     }
@@ -110,7 +108,7 @@ public class Request {
         int split = raw.indexOf("\r\n\r\n");
         String head = split >= 0 ? raw.substring(0, split) : raw;
         String[] lines = head.split("\r\n");
-        for (int i = 1; i < lines.length; i++) { // skip request-line
+        for (int i = 1; i < lines.length; i++) {
             String line = lines[i];
             if (line.isEmpty())
                 break;
