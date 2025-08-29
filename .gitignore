@@ -1,0 +1,44 @@
+# Maven
+/target/
+**/target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+.releaseBackup
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timestamp
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+*.zip
+*.tar.gz
+*.log
+hs_err_pid*
+replay_pid*
+
+# Common build dirs
+/out/
+build/
+bin/
+
+# VSCode
+.vscode/
+
+# IDEs
+.idea/
+*.iml
+.project
+.classpath
+.settings/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# SSH folder (ignore any .ssh directories in the repo)
+.ssh/
