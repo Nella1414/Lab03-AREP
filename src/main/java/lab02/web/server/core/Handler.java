@@ -5,5 +5,5 @@ import lab02.web.server.http.Response;
 
 @FunctionalInterface
 public interface Handler {
-    void handle(Request req, Response res);
+    void handle(Request req, Response res) throws Exception;
 }

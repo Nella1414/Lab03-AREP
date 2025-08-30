@@ -12,14 +12,15 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.HashMap;
 import java.util.Map;
 import java.time.Instant;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class WebServer {
     private int listeningPort;
     private String assetsRoot;
-    private final Map<String, Map<HttpMethod, Handler>> registry;
+    private final Map<RouteKey, Handler> routes;
 
     public WebServer() {
         this(8000, "src/main/resources/static");
@@ -28,7 +29,7 @@ public class WebServer {
     public WebServer(int port, String staticPath) {
         this.listeningPort = port;
         this.assetsRoot = staticPath;
-        this.registry = new HashMap<>();
+        this.routes = new ConcurrentHashMap<>();
     }
 
     public WebServer port(int port) {
@@ -42,31 +43,29 @@ public class WebServer {
     }
 
     public void register(HttpMethod method, String path, Handler handler) {
-        map(path, method, handler);
+        String norm = normalizePath(path);
+        routes.put(new RouteKey(method, norm), Objects.requireNonNull(handler));
     }
 
-    private void map(String path, HttpMethod method, Handler handler) {
-        registry.computeIfAbsent(path, k -> new HashMap<>()).put(method, handler);
-    }
-
+    // Convenience methods for compatibility
     public void get(String path, Handler handler) {
-        map(path, HttpMethod.GET, handler);
+        register(HttpMethod.GET, path, handler);
     }
 
     public void post(String path, Handler handler) {
-        map(path, HttpMethod.POST, handler);
+        register(HttpMethod.POST, path, handler);
     }
 
     public void put(String path, Handler handler) {
-        map(path, HttpMethod.PUT, handler);
+        register(HttpMethod.PUT, path, handler);
     }
 
     public void patch(String path, Handler handler) {
-        map(path, HttpMethod.PATCH, handler);
+        register(HttpMethod.PATCH, path, handler);
     }
 
     public void delete(String path, Handler handler) {
-        map(path, HttpMethod.DELETE, handler);
+        register(HttpMethod.DELETE, path, handler);
     }
 
     private boolean exists(String path) {
@@ -107,30 +106,44 @@ public class WebServer {
     }
 
     public Response handleRequest(Request request) {
-        String path = request.getPath();
-        int q = path == null ? -1 : path.indexOf('?');
-        String cleanPath = path == null ? "/" : (q >= 0 ? path.substring(0, q) : path);
-        Map<HttpMethod, Handler> byMethod = registry.get(cleanPath);
-        Handler handler = byMethod != null ? byMethod.get(request.getMethod()) : null;
         Response response = new Response();
-        if (path == null || path.isEmpty())
-            path = "/";
-        if (cleanPath.endsWith("/"))
-            cleanPath = cleanPath + "index.html";
-        String candidate = this.assetsRoot + cleanPath;
+        String cleanPath = normalizePath(extractPathOnly(request.getPath()));
+        Handler handler = routes.get(new RouteKey(request.getMethod(), cleanPath));
 
         if (handler != null) {
-            handler.handle(request, response);
-        } else if (exists(candidate)) {
-            response.setStatusCode(200);
-            response.setHeader("Content-Type", mime(candidate));
-            response.setBody(readBytes(candidate));
-        } else {
-            response.setStatusCode(404);
-            response.setStatusMessage("Not Found");
-            response.setBody("Static file or handler for " + request.getPath() + " not found");
+            try {
+                handler.handle(request, response);
+                if (response.getStatusCode() == 0) {
+                    response.setStatusCode(200);
+                }
+            } catch (Exception e) {
+                response.setStatusCode(500);
+                response.setStatusMessage("Internal Server Error");
+                response.setBody("Handler error");
+            }
+            return response;
         }
 
+        String staticCandidate = toStaticPath(cleanPath);
+        if (exists(staticCandidate)) {
+            response.setStatusCode(200);
+            response.setHeader("Content-Type", mime(staticCandidate));
+            response.setBody(readBytes(staticCandidate));
+            return response;
+        }
+
+        // Fallback to /index.html if available
+        String indexCandidate = this.assetsRoot + "/index.html";
+        if (exists(indexCandidate)) {
+            response.setStatusCode(200);
+            response.setHeader("Content-Type", mime(indexCandidate));
+            response.setBody(readBytes(indexCandidate));
+            return response;
+        }
+
+        response.setStatusCode(404);
+        response.setStatusMessage("Not Found");
+        response.setBody("Static file or handler for " + request.getPath() + " not found");
         return response;
     }
 
@@ -174,5 +187,31 @@ public class WebServer {
 
     private String safe(String s) {
         return s == null ? "(null)" : s.replaceAll("\r|\n", " ");
+    }
+
+    private static String extractPathOnly(String rawPath) {
+        if (rawPath == null || rawPath.isEmpty())
+            return "/";
+        int q = rawPath.indexOf('?');
+        return q >= 0 ? rawPath.substring(0, q) : rawPath;
+    }
+
+    private static String normalizePath(String p) {
+        if (p == null || p.isEmpty())
+            return "/";
+        String out = p.startsWith("/") ? p : "/" + p;
+        if (out.length() > 1 && out.endsWith("/"))
+            out = out.substring(0, out.length() - 1);
+        return out;
+    }
+
+    private String toStaticPath(String cleanPath) {
+        String p = cleanPath;
+        if (p.equals("/"))
+            p = "/index.html";
+        return this.assetsRoot + p;
+    }
+
+    private record RouteKey(HttpMethod method, String path) {
     }
 }
