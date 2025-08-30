@@ -1,75 +1,98 @@
-# Lab 03 — Lightweight Java Web Framework (TDSE)
+# MicroSpringBoot — Annotation-based Micro Web Framework
 
-A minimal web framework built in Java that serves static files and lets you define REST endpoints with concise lambda handlers. It includes query parameter parsing and a tiny routing table.
+MicroSpringBoot is a tiny annotation-driven Java web framework with a minimal HTTP server. It serves static files and lets you define REST endpoints using annotations (recommended) or simple lambda handlers.
 
 Author: Marianella Polo Peña — for the TDSE course at Escuela Colombiana de Ingeniería, under Professor Luis Daniel Benavides.
 
-## What’s here
-- Static file server (HTML, JS, CSS, images) from a configurable folder.
-- Simple REST routing with lambda-style handlers for HTTP methods (GET, POST, PUT, PATCH, DELETE).
-- Query parameter extraction available to handlers.
-- Small example app with a health check.
+## Features
+- Static file server from `src/main/resources/static`.
+- Annotation-driven REST controllers: `@RestController`, `@GetMapping`, `@PostMapping`, `@PutMapping`, `@PatchMapping`, `@DeleteMapping`.
+- Query parameter binding with `@QueryParam` supporting: `String`, `int/Integer`, `long/Long`, `double/Double`, `boolean/Boolean`.
+- Minimal bootstrap with `MicroSpringBoot.run(App.class, 8080)`.
+- Optional low-level API: `WebServer#get/post/put/patch/delete` for manual routing.
+
+## Clone the repository
+Prerequisites: Git.
+
+```bash
+git clone https://github.com/Nella1414/Lab03-AREP.git
+cd Lab03-AREP
+```
 
 ## How to run
 Prerequisites: Java 17+ and Maven.
 
-1) Clone the repository
+1) Build
+```bash
+mvn -q -DskipTests clean package
 ```
-git clone https://github.com/Nella1414/Lab02-AREP.git
-cd Lab02-AREP
+2) Run
+```bash
+mvn -q -Dexec.mainClass=lab02.web.App exec:java
 ```
-2) Build and run
-```
-mvn clean package
-mvn exec:java
-```
-3) Try it in your browser
+3) Try it
 - Static file: http://localhost:8080/index.html
-- Health check: http://localhost:8080/health
+- Demo endpoint: http://localhost:8080/hello
+- With query: http://localhost:8080/hello?name=YourName
 
-## Example: defining REST services
-In `lab02.web.App` you can register routes and set the static folder. For example:
+## Example (annotation-based)
+`src/main/java/lab02/web/controller/HelloController.java`
 
 ```java
+import lab02.web.server.annotations.RestController;
+import lab02.web.server.annotations.GetMapping;
+import lab02.web.server.annotations.QueryParam;
+
+@RestController
+public class HelloController {
+  @GetMapping("/hello")
+  public String hello(@QueryParam(value = "name", defaultValue = "World") String name) {
+    return "Hola, " + name;
+  }
+}
+```
+
+`src/main/java/lab02/web/App.java`
+
+```java
+import lab02.web.server.annotations.MicroSpringbootApp;
+import lab02.web.server.core.MicroSpringBoot;
+
+@MicroSpringbootApp
+public class App {
+  public static void main(String[] args) {
+    MicroSpringBoot.run(App.class, 8080);
+  }
+}
+```
+
+## Example (manual routing, optional)
+If you prefer explicit routing without annotations, use the low-level `WebServer`:
+
+```java
+import lab02.web.server.core.WebServer;
+
 WebServer http = new WebServer(8080, "src/main/resources/static");
-
-http.get("/hello", (req, res) -> {
-    String name = req.getQueryParams().getOrDefault("name", "world");
-    res.setBody("Hello " + name);
+http.get("/ping", (req, res) -> {
+  res.setStatusCode(200);
+  res.setBody("pong");
 });
-
-http.get("/pi", (req, res) -> {
-    res.setBody(String.valueOf(Math.PI));
-});
-
 http.start();
 ```
 
-Then call:
-- http://localhost:8080/hello?name=Pedro
-- http://localhost:8080/pi
-
 ## Project structure
-- `src/main/java/lab02/web/App.java` — Application entry point; wires the server and routes.
-- `src/main/java/lab02/web/server/` — Minimal framework:
-  - `WebServer` — Routing table, static file serving, request loop.
-  - `Request` — Parses method, path, version, headers, query params, and JSON body.
-  - `Response` — Status, headers, and body writer.
-  - `Handler` — Functional interface for lambda handlers.
-  - `HttpMethod` — Supported verbs.
-- `src/main/resources/static/` — Public web assets (e.g., `index.html`).
-- `src/test/java/lab02/` — Unit tests (JUnit 5).
-
-## Architecture at a glance
-- Networking: A basic `ServerSocket` accept loop handles one connection at a time.
-- Parsing: `Request` builds from the raw HTTP request, extracting headers, query params, and optional JSON body.
-- Routing: `WebServer` keeps a `Map<String, Map<HttpMethod, Handler>>`; the best-matching handler is invoked.
-- Static files: If no handler matches, the server resolves files under the configured static root and returns bytes with a simple MIME guesser.
-- Responses: `Response` aggregates status, headers, and payload; the server serializes it to HTTP/1.1.
+- `src/main/java/lab02/web/App.java` — App entry point annotated with `@MicroSpringbootApp`.
+- `src/main/java/lab02/web/controller/` — Application controllers.
+- `src/main/java/lab02/web/server/annotations/` — Annotations.
+- `src/main/java/lab02/web/server/http/` — HTTP primitives.
+- `src/main/java/lab02/web/server/core/` — Router, server, bootstrap.
+- `src/main/resources/static/` — Public assets (e.g., `index.html`).
+- `src/test/java/lab02/web/` — Unit tests.
 
 ## Notes
-- Default static folder in this project is `src/main/resources/static`. When packaged, Maven also copies resources under `target/classes/static/`.
-- The current demo includes a `/health` endpoint and serves `index.html` from the static folder.
+- Controllers are discovered by scanning compiled classes under the base package of your `App` class (here: `lab02.web`). Keep controllers under the same root package to be found.
+- Static files are served from the filesystem path `src/main/resources/static` relative to the project root.
+- Paths are literal (no path params). Use `@QueryParam` for query parameters.
 
----
-Made by Marianella Polo Peña for the TDSE course at Escuela Colombiana de Ingeniería — Professor Luis Daniel Benavides.
+## Credits
+MicroSpringBoot was created by Marianella Polo Peña for the TDSE course at Escuela Colombiana de Ingeniería, under Professor Luis Daniel Benavides.

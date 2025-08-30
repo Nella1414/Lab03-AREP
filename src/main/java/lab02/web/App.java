@@ -1,20 +1,11 @@
 package lab02.web;
 
-import lab02.web.server.core.WebServer;
+import lab02.web.server.annotations.MicroSpringbootApp;
+import lab02.web.server.core.MicroSpringBoot;
 
-/**
- * Demo app spinning up the lightweight HTTP server.
- */
+@MicroSpringbootApp
 public class App {
     public static void main(String[] args) {
-        // You can also chain: new
-        // WebServer().port(8080).staticPath("src/main/resources/static")
-        WebServer http = new WebServer(8080, "src/main/resources/static");
-
-        http.get("/health", (req, res) -> {
-            res.setBody("The server is healthy");
-        });
-
-        http.start();
+        MicroSpringBoot.run(App.class, 8080);
     }
 }
